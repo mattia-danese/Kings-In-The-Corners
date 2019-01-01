@@ -1,0 +1,452 @@
+<!DOCTYPE HTML>
+<!--Mattia Danese-->
+<html>
+	<head>
+		<link rel = "stylesheet" type = "text/css" href = "columns.css">
+		<title></title>
+		
+		<style>
+			body
+			{
+				text-align:center;
+				background-color:#d4eaff;
+			}
+			.hide
+			{
+				display:none;
+			}
+			.bot
+			{
+				margin-bottom:1%;
+			}
+			#shownCard
+			{
+				width:75px;
+				height:107px;
+			}
+			.big
+			{
+				font-size:large;
+			}
+			button
+			{
+				border-radius:20px;
+			}
+			#selections
+			{
+				text-align: left;
+				position:absolute;
+				top:22.5%;
+				left:5%;
+			}
+		</style>
+		<script>
+			function initialize()
+			{
+				blankcard = {};
+				blankcard.img = "blankcard.png";
+				blankcard.kind = "nothing";
+
+				topDeck = document.getElementById("deck");
+				shownCard = document.getElementById("shownCard");
+				startB = document.getElementById("startB");
+				grid = document.getElementById("grid");
+				lostMsg = document.getElementById("lost");
+				winMsg = document.getElementById("win");
+				restartB = document.getElementById("restartB");
+				selection = document.getElementById("selections");
+				sel1 = document.getElementById("image1");
+				
+				deck = [];
+				discard = [];
+				kind = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, "Jack", "Queen", "King"];
+				deckPosition = Math.round(Math.random() * 51);
+				
+				cardsInPlay = [blankcard,blankcard,blankcard,blankcard,blankcard,blankcard,blankcard,blankcard,blankcard,blankcard,blankcard,blankcard,blankcard,blankcard,blankcard,blankcard];
+				gridPositions = ["corner","top","top","corner","left","any","any","right","left","any","any","right","corner","bottom","bottom","corner"];
+				removableCards = [0,0,0,0,0,0,0,0,0,0];
+				
+				totalPairs = 0;
+				takingAway = false;
+				select = null;
+				select2 = null;
+				
+				genCardDeck();
+			}
+			
+			function startGame()
+			{
+				topDeck.style.display = "inline";
+				shownCard.style.display = "inline";
+				grid.style.display = "block";
+				startB.style.display = "none";
+				selection.style.display = "block";
+				
+				generateGrid();
+			}
+			
+			function genCardDeck()
+			{	
+				var counter = 0;
+				var imgIdx = 0;
+				while (counter < 4)
+				{
+					for (var x = 0; x < kind.length; x++)
+						{
+							card = {};
+							card.kind = kind[x];
+							card.img = "cardimages/" + imgIdx + ".png";
+							deck.push(card);
+							imgIdx++;
+						}
+					counter++;
+				}
+			}
+			
+			function flipCard()
+			{
+				if((shownCard.src.includes(blankcard.img)) && (takingAway == false) && (cardsInPlay.includes(blankcard)))
+				{
+					while(discard.includes(deckPosition))
+					{
+						deckPosition = Math.round(Math.random() * 51);
+					}
+					discard.push(deckPosition);
+					shownCard.src = deck[deckPosition].img;
+					checkGameLost();
+				}
+				else
+				{
+					return;
+				}
+			}
+			
+			function generateGrid()
+			{
+				var counter = 0;
+				while (counter < 16)
+				{
+					newElement = document.createElement("img");
+					newElement.setAttribute("onclick", "playOptions(this);");
+					newElement.id = counter;
+					newElement.src = blankcard.img;
+					newElement.selected = false;
+					newElement.setAttribute("class","column");
+					grid.appendChild(newElement);
+					if ((counter == 3) || (counter == 7) || (counter == 11))
+					{
+						newElement2 = document.createElement("br");
+						grid.appendChild(newElement2);
+					}
+					counter++;
+				}
+				allPlaces = document.getElementsByClassName("column");
+			}
+			
+			function playOptions(element)
+			{
+				//Placing Cards In Grid 
+				if((cardsInPlay[element.id] == blankcard) && shownCard.src.includes(blankcard.img) == false && takingAway == false)
+				{
+					if(checkPlacement(element))
+					{
+						display();
+						shownCard.src = blankcard.img;
+					}
+					else
+					{
+						return;
+					}
+				}
+				else
+				{
+					if(checkGridFill() && calculatePairs() == 0)
+					{
+						gameLost("The board is filled and no cards can be taken off!");
+					}
+					if(calculatePairs() != 0 && takingAway == true)
+					{
+						pairingUp(element);
+					}
+					else
+					{
+						return;
+					}
+				}
+			}
+			
+			function checkPlacement(element)
+			{
+				var num = element.id;
+				if(((gridPositions[num] == "corner") && (deck[deckPosition].kind == "King")) || (((gridPositions[num] == "top") || (gridPositions[num] == "bottom")) && (deck[deckPosition].kind == "Queen")) || (((gridPositions[num] == "left") || (gridPositions[num] == "right")) && (deck[deckPosition].kind == "Jack")) || ((deck[deckPosition].kind != "King") && (deck[deckPosition].kind != "Queen") && (deck[deckPosition].kind != "Jack")))
+				{
+					cardsInPlay[num] = deck[deckPosition];
+					return true;
+				}
+			}
+			
+			function display()
+			{
+				for (var i = 0; i < cardsInPlay.length; i++)
+				{
+					allPlaces[i].src = cardsInPlay[i].img;
+				}
+			}
+			
+			function checkGridFill()
+			{
+				for (var i = 0; i < cardsInPlay.length; i++)
+				{
+					if(cardsInPlay[i] == blankcard)
+					{
+						return false;
+					}
+				}
+				takingAway = true;
+				return true;
+			}
+			
+			function calculatePairs()
+			{
+				totalPairs = 0;
+				removableCards = [0,0,0,0,0,0,0,0,0,0];
+				for (var i = 0; i < cardsInPlay.length; i++)
+				{
+					if((cardsInPlay[i].kind != "King") && (cardsInPlay[i].kind != "Queen") && (cardsInPlay[i].kind != "Jack") && (cardsInPlay[i].kind != "nothing"))
+					{
+						if(cardsInPlay[i].kind == 1)
+						{
+							removableCards[0]++;
+						}
+						if(cardsInPlay[i].kind == 2)
+						{
+							removableCards[1]++;
+						}
+						if(cardsInPlay[i].kind == 3)
+						{
+							removableCards[2]++;
+						}
+						if(cardsInPlay[i].kind == 4)
+						{
+							removableCards[3]++;	
+						}
+						if(cardsInPlay[i].kind == 5)
+						{
+							removableCards[4]++;
+						}
+						if(cardsInPlay[i].kind == 6)
+						{
+							removableCards[5]++;
+						}
+						if(cardsInPlay[i].kind == 7)
+						{
+							removableCards[6]++;	
+						}
+						if(cardsInPlay[i].kind == 8)
+						{
+							removableCards[7]++;
+						}
+						if(cardsInPlay[i].kind == 9)
+						{
+							removableCards[8]++;		
+						}
+						if(cardsInPlay[i].kind == 10)
+						{
+							removableCards[9]++;	
+						}
+					}
+				}
+				if ((removableCards[0] > 0) && (removableCards[8] > 0))
+				{
+					totalPairs++;
+				}
+				if ((removableCards[1] > 0) && (removableCards[7] > 0))
+				{
+					totalPairs++;
+				}
+				if ((removableCards[2] > 0) && (removableCards[6] > 0))
+				{
+					totalPairs++;
+				}
+				if ((removableCards[3] > 0) && (removableCards[5] > 0))
+				{
+					totalPairs++;
+				}
+				if (removableCards[4] > 1)
+				{
+					totalPairs++;
+				}
+				if (removableCards[9] > 0)
+				{
+					totalPairs++;
+				}
+				
+				if(totalPairs == 0)
+				{
+					takingAway = false;
+				}
+				return totalPairs;
+			}
+			
+			function pairingUp(element)
+			{
+				if(element.selected)
+				{
+					alert("You cannot pick the same card twice")
+					sel1.src = blankcard.img;
+					element.selected = false;
+					return; 
+				}
+				else
+				{
+					element.selected = true;
+				}
+
+				if(select == null)
+				{
+					select = element.id;
+					holder = element;
+				}
+				else
+				{
+					select2 = element.id;
+				}
+				
+				if(cardsInPlay[select].kind == 10)
+				{
+					cardsInPlay[select] = blankcard;
+					display();
+					totalPairs--;
+					select = null;
+					element.selected = false;
+				}
+				else
+				{
+					sel1.src = cardsInPlay[select].img;
+				}
+
+				
+				if(select2 != null)
+				{
+					if(cardsInPlay[select].kind + cardsInPlay[select2].kind == 10)
+					{
+						cardsInPlay[select] = blankcard;
+						cardsInPlay[select2] = blankcard;
+						display();
+						totalPairs--;
+						select = null;
+						select2 = null;
+						sel1.src = blankcard.img;
+						element.selected = false;
+
+						holder.selected = false;
+						element.selected = false;
+					}
+					else
+					{
+						select = null;
+						select2 = null;
+						sel1.src = blankcard.img;
+						holder.selected = false;
+						element.selected = false;
+					}
+				}
+				
+				calculatePairs();
+				
+				checkGameWin();
+			}
+			
+			function checkGameLost()
+			{
+				if((deck[deckPosition].kind == "King") && (cardsInPlay[0] != blankcard) && (cardsInPlay[3] != blankcard) && (cardsInPlay[12] != blankcard) && (cardsInPlay[15] != blankcard))
+				{
+					gameLost(" There are no more spots for this King to be placed!");
+				}
+				
+				if((deck[deckPosition].kind == "Queen") && (cardsInPlay[1] != blankcard) && (cardsInPlay[2] != blankcard) && (cardsInPlay[13] != blankcard) && (cardsInPlay[14] != blankcard))
+				{
+					gameLost(" There are no more spots for this Queen to be placed!");
+				}
+				
+				if((deck[deckPosition].kind == "Jack") && (cardsInPlay[4] != blankcard) && (cardsInPlay[8] != blankcard) && (cardsInPlay[7] != blankcard) && (cardsInPlay[11] != blankcard))
+				{
+					gameLost(" There are no more spots for this Jack to be placed!");
+				}
+			}
+			
+			function gameLost(msg)
+			{
+				topDeck.removeAttribute("onclick");
+				for (var i = 0; i < allPlaces.length; i++)
+				{
+					allPlaces[i].removeAttribute("onclick");
+				}
+				
+				lostMsg.style.display = "block";
+				lostMsg.innerHTML = lostMsg.innerHTML + msg;
+				restartB.style.display = "inline";
+			}
+			
+			function checkGameWin()
+			{
+				if((cardsInPlay[0].kind == "King") && (cardsInPlay[3].kind == "King") && (cardsInPlay[12].kind == "King") && (cardsInPlay[15].kind == "King") && (cardsInPlay[1].kind == "Queen") && (cardsInPlay[2].kind == "Queen") && (cardsInPlay[13].kind == "Queen") && (cardsInPlay[14].kind == "Queen") && (cardsInPlay[4].kind == "Jack") && (cardsInPlay[7].kind == "Jack") && (cardsInPlay[8].kind == "Jack") && (cardsInPlay[11].kind == "Jack") && (cardsInPlay[5] == blankcard) && (cardsInPlay[6] == blankcard) && (cardsInPlay[9] == blankcard) && (cardsInPlay[10] == blankcard))
+				{
+					gameWin();
+				}
+			}
+			function gameWin()
+			{
+				topDeck.removeAttribute("onclick");
+				for (var i = 0; i < allPlaces.length; i++)
+				{
+					allPlaces[i].removeAttribute("onclick");
+				}
+				
+				winMsg.style.display = "block";
+				restartB.style.display = "inline";
+			}
+			
+			function restartGame()
+			{
+				initialize();
+				display();
+				shownCard.src = blankcard.img;
+				for (var i = 0; i < allPlaces.length; i++)
+				{
+					allPlaces[i].setAttribute("onclick", "playOptions(this);");
+				}
+				topDeck.setAttribute("onclick", "flipCard();");
+				
+				winMsg.innerHTML = "You Win!";
+				winMsg.style.display = "none";
+				lostMsg.innerHTML = "You Lose!";
+				lostMsg.style.display = "none";
+				restartB.style.display = "none";
+			}
+		</script>
+	</head>
+	<body onload = "initialize();">
+		<h1 id = "title">
+			Kings In The Corners
+		</h1>
+		<button onclick = "startGame();" id = "startB" class = "big">
+			Start Game 
+		</button>
+		<img src = "cardimages/back-red-75-1.png" id = "deck" class = "hide bot" onclick = "flipCard();">
+		<img id = "shownCard" class = "hide bot" src = "blankcard.png">
+		
+		<div id = "grid" class = "hide columncontainer"></div>
+		<div id = "selections" class = "hide">
+			<div id = "select1">
+				<div class = "big">Previous Selection</div>
+				<img src = "blankcard.png" id = "image1" />
+			</div>
+		</div>
+		<div id = "win" class = "hide big"> You Win!</div>
+		<div id = "lost" class = "hide big"> You Lose!</div>
+		<button id = "restartB" onclick = "restartGame();" class = "hide big">
+			Restart
+		</button>
+	</body>
+</html>
